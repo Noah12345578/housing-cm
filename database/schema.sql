@@ -50,6 +50,7 @@ CREATE TABLE properties (
     near_hospital TINYINT(1) NOT NULL DEFAULT 0,
     near_university TINYINT(1) NOT NULL DEFAULT 0,
     near_transport TINYINT(1) NOT NULL DEFAULT 0,
+    is_verified TINYINT(1) NOT NULL DEFAULT 0,
     status ENUM('disponible', 'reserve', 'loue', 'vendu', 'retire') NOT NULL DEFAULT 'disponible',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

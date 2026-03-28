@@ -12,6 +12,7 @@ $statement = $pdo->prepare(
         properties.property_type,
         properties.listing_type,
         properties.price,
+        properties.is_verified,
         properties.status,
         properties.created_at,
         property_images.image_path,
@@ -73,6 +74,11 @@ $properties = $statement->fetchAll();
                                 <span class="badge"><?php echo escape($property['property_type']); ?></span>
                                 <span class="badge"><?php echo escape($property['listing_type']); ?></span>
                                 <span class="badge"><?php echo escape($property['status']); ?></span>
+                                <?php if (!empty($property['is_verified'])): ?>
+                                    <span class="badge badge-verified">Verifiee</span>
+                                <?php else: ?>
+                                    <span class="badge badge-review">En attente de verification</span>
+                                <?php endif; ?>
                             </div>
 
                             <h3><?php echo escape($property['title']); ?></h3>

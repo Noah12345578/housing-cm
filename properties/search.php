@@ -8,6 +8,7 @@ $propertyType = trim($_GET['property_type'] ?? '');
 $maxPrice = trim($_GET['max_price'] ?? '');
 $listingType = trim($_GET['listing_type'] ?? '');
 $bedrooms = trim($_GET['bedrooms'] ?? '');
+$verifiedOnly = isset($_GET['verified_only']) && $_GET['verified_only'] === '1';
 $sort = trim($_GET['sort'] ?? 'recent');
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 6;
@@ -73,13 +74,19 @@ if ($bedrooms !== '' && is_numeric($bedrooms)) {
     $params['bedrooms'] = (int) $bedrooms;
 }
 
+if ($verifiedOnly) {
+    $baseSql .= ' AND properties.is_verified = :is_verified';
+    $params['is_verified'] = 1;
+}
+
 $hasMeaningfulSearch = (
     $city !== '' ||
     $neighborhood !== '' ||
     $propertyType !== '' ||
     $maxPrice !== '' ||
     $listingType !== '' ||
-    $bedrooms !== ''
+    $bedrooms !== '' ||
+    $verifiedOnly
 );
 
 if (isLoggedIn() && $hasMeaningfulSearch && $page === 1) {
@@ -140,8 +147,24 @@ $sql = 'SELECT
             properties.has_water,
             properties.has_electricity,
             properties.has_parking,
+            properties.has_fence,
+            properties.security_level,
+            properties.road_access,
+            properties.near_school,
+            properties.near_market,
+            properties.near_hospital,
+            properties.near_university,
+            properties.near_transport,
+            properties.is_verified,
             properties.status,
+            properties.created_at,
+            properties.updated_at,
             property_images.image_path,
+            (
+                SELECT COUNT(*)
+                FROM property_images AS gallery_images
+                WHERE gallery_images.property_id = properties.id
+            ) AS image_count,
             locations.region_name,
             locations.city_name,
             locations.neighborhood_name' .
@@ -245,6 +268,17 @@ $paginationPrefix = $paginationBase !== '' ? $paginationBase . '&' : '';
                         </select>
                     </div>
 
+                    <label class="checkbox-option" for="verified_only">
+                        <input
+                            type="checkbox"
+                            id="verified_only"
+                            name="verified_only"
+                            value="1"
+                            <?php echo $verifiedOnly ? 'checked' : ''; ?>
+                        >
+                        <span>Afficher uniquement les annonces verifiees</span>
+                    </label>
+
                     <div class="filter-actions">
                         <button class="btn btn-primary" type="submit">Filtrer les annonces</button>
                         <a class="btn btn-secondary" href="<?php echo escape(url('/properties/search.php')); ?>">Reinitialiser</a>
@@ -262,6 +296,9 @@ $paginationPrefix = $paginationBase !== '' ? $paginationBase . '&' : '';
                         <?php echo $totalProperties; ?> annonce(s) trouvee(s) -
                         page <?php echo $page; ?> sur <?php echo $totalPages; ?>.
                     </p>
+                    <?php if ($verifiedOnly): ?>
+                        <p class="helper-text">Filtre actif : annonces verifiees uniquement.</p>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -273,6 +310,10 @@ $paginationPrefix = $paginationBase !== '' ? $paginationBase . '&' : '';
             <?php else: ?>
                 <div class="cards-3">
                     <?php foreach ($properties as $property): ?>
+                        <?php
+                        $reliability = propertyReliabilityData($property);
+                        $practicalInsights = propertyPracticalInsights($property);
+                        ?>
                         <article class="property-card property-card-rich">
                             <img
                                 class="property-card-image"
@@ -284,6 +325,17 @@ $paginationPrefix = $paginationBase !== '' ? $paginationBase . '&' : '';
                                     <span class="badge"><?php echo escape($property['listing_type']); ?></span>
                                     <span class="badge"><?php echo escape($property['status']); ?></span>
                                     <span class="badge"><?php echo escape($property['property_type']); ?></span>
+                                    <?php if (!empty($property['is_verified'])): ?>
+                                        <span class="badge badge-verified">Annonce verifiee</span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="trust-score trust-score-<?php echo escape($reliability['tone']); ?>">
+                                    <div>
+                                        <span class="trust-score-label">Score de fiabilite</span>
+                                        <strong><?php echo (int) $reliability['score']; ?>/100</strong>
+                                    </div>
+                                    <span class="trust-score-pill"><?php echo escape($reliability['label']); ?></span>
                                 </div>
 
                                 <h3><?php echo escape($property['title']); ?></h3>
@@ -306,6 +358,18 @@ $paginationPrefix = $paginationBase !== '' ? $paginationBase . '&' : '';
                                     Electricite : <?php echo $property['has_electricity'] ? 'Oui' : 'Non'; ?> |
                                     Parking : <?php echo $property['has_parking'] ? 'Oui' : 'Non'; ?>
                                 </p>
+
+                                <div class="trust-hints">
+                                    <?php foreach ($reliability['strengths'] as $strength): ?>
+                                        <span class="trust-chip"><?php echo escape($strength); ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <?php if ($practicalInsights['cautions']): ?>
+                                    <p class="helper-text compact-helper">
+                                        A verifier : <?php echo escape($practicalInsights['cautions'][0]); ?>
+                                    </p>
+                                <?php endif; ?>
 
                                 <div class="card-actions">
                                     <a class="btn btn-primary" href="<?php echo escape(url('/properties/details.php?id=' . (int) $property['id'])); ?>">Voir details</a>

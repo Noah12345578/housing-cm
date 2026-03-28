@@ -6,14 +6,39 @@ $properties = $pdo->query(
     'SELECT
         properties.id,
         properties.title,
+        properties.description,
         properties.listing_type,
         properties.property_type,
         properties.price,
+        properties.bedrooms,
+        properties.bathrooms,
+        properties.rooms,
+        properties.has_water,
+        properties.has_electricity,
+        properties.has_parking,
+        properties.has_fence,
+        properties.security_level,
+        properties.road_access,
+        properties.near_school,
+        properties.near_market,
+        properties.near_hospital,
+        properties.near_university,
+        properties.near_transport,
+        properties.is_verified,
         properties.status,
         properties.created_at,
+        properties.updated_at,
         users.full_name AS owner_name,
+        users.phone,
         locations.city_name,
-        locations.neighborhood_name
+        locations.region_name,
+        locations.neighborhood_name,
+        locations.specific_area,
+        (
+            SELECT COUNT(*)
+            FROM property_images
+            WHERE property_images.property_id = properties.id
+        ) AS image_count
      FROM properties
      INNER JOIN users ON properties.user_id = users.id
      INNER JOIN locations ON properties.location_id = locations.id
@@ -64,12 +89,15 @@ $properties = $pdo->query(
                         <th>Type</th>
                         <th>Offre</th>
                         <th>Prix</th>
+                        <th>Fiabilite</th>
+                        <th>Verification</th>
                         <th>Statut</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($properties as $property): ?>
+                        <?php $reliability = propertyReliabilityData($property); ?>
                         <tr>
                             <td><?php echo (int) $property['id']; ?></td>
                             <td><?php echo escape($property['title']); ?></td>
@@ -79,10 +107,32 @@ $properties = $pdo->query(
                             <td><span class="badge"><?php echo escape($property['property_type']); ?></span></td>
                             <td><?php echo escape($property['listing_type']); ?></td>
                             <td><?php echo escape(formatPrice($property['price'])); ?></td>
+                            <td>
+                                <div class="admin-trust-block">
+                                    <span class="trust-score-pill trust-score-pill-<?php echo escape($reliability['tone']); ?>">
+                                        <?php echo (int) $reliability['score']; ?>/100
+                                    </span>
+                                    <small><?php echo escape($reliability['label']); ?></small>
+                                </div>
+                            </td>
+                            <td>
+                                <?php if (!empty($property['is_verified'])): ?>
+                                    <span class="badge badge-verified">Verifiee</span>
+                                <?php else: ?>
+                                    <span class="badge badge-review">A verifier</span>
+                                <?php endif; ?>
+                            </td>
                             <td><span class="badge"><?php echo escape($property['status']); ?></span></td>
                             <td>
                                 <div class="admin-action-stack">
                                     <a class="btn btn-primary" href="<?php echo escape(url('/properties/details.php?id=' . (int) $property['id'])); ?>">Voir</a>
+                                    <form class="admin-inline-form" action="<?php echo escape(url('/actions/admin_toggle_property_verification_action.php')); ?>" method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+                                        <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
+                                        <button class="btn btn-secondary" type="submit">
+                                            <?php echo !empty($property['is_verified']) ? 'Retirer verification' : 'Verifier annonce'; ?>
+                                        </button>
+                                    </form>
                                     <form class="admin-inline-form" action="<?php echo escape(url('/actions/admin_update_property_action.php')); ?>" method="POST">
                                         <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
                                         <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">

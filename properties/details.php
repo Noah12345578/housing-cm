@@ -60,6 +60,9 @@ $imagesStatement = $pdo->prepare(
 $imagesStatement->execute(['property_id' => $propertyId]);
 $propertyImages = $imagesStatement->fetchAll();
 $mainImagePath = $propertyImages[0]['image_path'] ?? '/housing-cm/assets/images/default-property.svg';
+$property['image_count'] = count($propertyImages);
+$reliability = propertyReliabilityData($property);
+$practicalInsights = propertyPracticalInsights($property);
 
 $similarStatement = $pdo->prepare(
     'SELECT
@@ -155,7 +158,40 @@ if (isLoggedIn()) {
                 <span class="badge"><?php echo escape($property['listing_type']); ?></span>
                 <span class="badge"><?php echo escape($property['property_type']); ?></span>
                 <span class="badge"><?php echo escape($property['status']); ?></span>
+                <?php if (!empty($property['is_verified'])): ?>
+                    <span class="badge badge-verified">Annonce verifiee</span>
+                <?php endif; ?>
             </div>
+
+            <section class="trust-panel trust-panel-<?php echo escape($reliability['tone']); ?>">
+                <div class="trust-panel-head">
+                    <div>
+                        <span class="eyebrow">Indice confiance</span>
+                        <h2>Score de fiabilite : <?php echo (int) $reliability['score']; ?>/100</h2>
+                        <p><?php echo escape($reliability['summary']); ?></p>
+                    </div>
+                    <span class="trust-score-pill"><?php echo escape($reliability['label']); ?></span>
+                </div>
+
+                <div class="trust-columns">
+                    <div>
+                        <h3>Ce qui rassure</h3>
+                        <ul class="trust-list trust-list-good">
+                            <?php foreach ($reliability['strengths'] as $strength): ?>
+                                <li><?php echo escape($strength); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Points a verifier</h3>
+                        <ul class="trust-list trust-list-watch">
+                            <?php foreach ($reliability['warnings'] as $warning): ?>
+                                <li><?php echo escape($warning); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+            </section>
 
             <p class="property-price"><?php echo escape(formatPrice($property['price'])); ?></p>
             <div class="detail-metrics">
@@ -195,6 +231,26 @@ if (isLoggedIn()) {
                 <div class="detail-item"><strong>Proche hopital :</strong> <?php echo $property['near_hospital'] ? 'Oui' : 'Non'; ?></div>
                 <div class="detail-item"><strong>Proche universite :</strong> <?php echo $property['near_university'] ? 'Oui' : 'Non'; ?></div>
                 <div class="detail-item"><strong>Proche transport :</strong> <?php echo $property['near_transport'] ? 'Oui' : 'Non'; ?></div>
+            </div>
+
+            <h2 class="detail-section-title">Vie pratique autour du logement</h2>
+            <div class="practical-living-grid">
+                <div class="practical-card">
+                    <h3>Atouts du quotidien</h3>
+                    <ul class="trust-list trust-list-good">
+                        <?php foreach ($practicalInsights['highlights'] as $highlight): ?>
+                            <li><?php echo escape($highlight); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <div class="practical-card">
+                    <h3>Points a confirmer avant visite</h3>
+                    <ul class="trust-list trust-list-watch">
+                        <?php foreach ($practicalInsights['cautions'] as $caution): ?>
+                            <li><?php echo escape($caution); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
             </div>
         </article>
 

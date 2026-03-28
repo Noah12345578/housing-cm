@@ -40,6 +40,7 @@ $_SESSION['user'] = [
     'full_name' => $user['full_name'],
     'email' => $user['email'],
     'phone' => $user['phone'],
+    'profile_image' => $user['profile_image'] ?? null,
     'role' => $user['role'],
 ];
 

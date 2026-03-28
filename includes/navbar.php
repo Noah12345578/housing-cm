@@ -5,8 +5,11 @@ $userRole = $loggedInUser['role'] ?? null;
 <header class="site-header">
     <div class="container navbar">
         <a class="brand" href="/housing-cm/index.php">Housing CM</a>
+        <button class="nav-mobile-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" onclick="document.body.classList.toggle('mobile-nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('mobile-nav-open') ? 'true' : 'false');">
+            Menu
+        </button>
 
-        <nav class="main-nav">
+        <nav class="main-nav" id="main-navigation">
             <div class="nav-primary">
                 <a class="nav-link" href="/housing-cm/index.php">Accueil</a>
                 <a class="nav-link" href="/housing-cm/properties/search.php">Rechercher</a>
@@ -56,7 +59,14 @@ $userRole = $loggedInUser['role'] ?? null;
                 </div>
 
                 <div class="nav-account">
-                    <span class="nav-user"><?php echo escape($loggedInUser['full_name']); ?></span>
+                    <a class="nav-profile-chip" href="/housing-cm/user/profile.php">
+                        <img
+                            class="nav-avatar"
+                            src="<?php echo escape(profileImageUrl($loggedInUser['profile_image'] ?? null)); ?>"
+                            alt="Photo de profil de <?php echo escape($loggedInUser['full_name']); ?>"
+                        >
+                        <span class="nav-user"><?php echo escape($loggedInUser['full_name']); ?></span>
+                    </a>
                     <a class="btn btn-nav" href="/housing-cm/auth/logout.php">Deconnexion</a>
                 </div>
             <?php else: ?>

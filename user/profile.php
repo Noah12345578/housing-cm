@@ -5,7 +5,7 @@ require_once __DIR__ . '/../config/database.php';
 $user = currentUser();
 
 $statement = $pdo->prepare(
-    'SELECT id, full_name, email, phone, role, created_at
+    'SELECT id, full_name, email, phone, role, profile_image, created_at
      FROM users
      WHERE id = :id
      LIMIT 1'
@@ -48,6 +48,17 @@ $formData = array_merge($profile, $oldProfileInput);
                 <p>Des coordonnees a jour facilitent les messages, les visites et la gestion de ton espace personnel.</p>
             </div>
             <div class="profile-summary">
+                <div class="profile-identity">
+                    <img
+                        class="profile-avatar profile-avatar-large"
+                        src="<?php echo escape(profileImageUrl($profile['profile_image'] ?? null)); ?>"
+                        alt="Photo de profil de <?php echo escape($profile['full_name']); ?>"
+                    >
+                    <div>
+                        <strong><?php echo escape($profile['full_name']); ?></strong>
+                        <p class="helper-text"><?php echo escape($profile['email']); ?></p>
+                    </div>
+                </div>
                 <div class="detail-item"><strong>Role :</strong> <?php echo escape($profile['role']); ?></div>
                 <div class="detail-item"><strong>Membre depuis :</strong> <?php echo escape($profile['created_at']); ?></div>
             </div>
@@ -58,8 +69,27 @@ $formData = array_merge($profile, $oldProfileInput);
         <div class="profile-layout">
             <article class="auth-card">
                 <h2>Informations personnelles</h2>
-                <form class="auth-form" action="/housing-cm/actions/update_profile_action.php" method="POST">
+                <form class="auth-form" action="/housing-cm/actions/update_profile_action.php" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+
+                    <div class="profile-upload">
+                        <img
+                            class="profile-avatar profile-avatar-large"
+                            src="<?php echo escape(profileImageUrl($profile['profile_image'] ?? null)); ?>"
+                            alt="Apercu de la photo de profil"
+                        >
+                        <div>
+                            <label for="profile_image">Photo de profil</label>
+                            <input type="file" id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png,.webp">
+                            <p class="helper-text">Ajoute une photo claire pour rendre ton compte plus professionnel.</p>
+                            <?php if (!empty($profile['profile_image'])): ?>
+                                <label class="checkbox-option" for="remove_profile_image">
+                                    <input type="checkbox" id="remove_profile_image" name="remove_profile_image" value="1">
+                                    <span>Retirer ma photo actuelle</span>
+                                </label>
+                            <?php endif; ?>
+                        </div>
+                    </div>
 
                     <div>
                         <label for="full_name">Nom complet</label>
