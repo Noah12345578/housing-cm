@@ -97,9 +97,9 @@ unset($_SESSION['old_property_input']);
             </div>
 
             <div>
-                <label for="main_image">Image principale du logement</label>
-                <input type="file" id="main_image" name="main_image" accept=".jpg,.jpeg,.png,.webp">
-                <p class="helper-text">Formats acceptes : JPG, JPEG, PNG, WEBP. Taille conseillee : moins de 2 Mo.</p>
+                <label for="property_images">Photos du logement</label>
+                <input type="file" id="property_images" name="property_images[]" accept=".jpg,.jpeg,.png,.webp" multiple>
+                <p class="helper-text">Tu peux ajouter jusqu a 6 photos. La premiere sera utilisee comme image principale.</p>
             </div>
 
             <div class="grid-2">

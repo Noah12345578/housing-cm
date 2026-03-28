@@ -8,12 +8,24 @@ require_once __DIR__ . '/includes/functions.php';
     <section class="hero">
         <div class="container hero-grid">
             <div class="hero-card">
+                <span class="eyebrow">Plateforme immobiliere adaptee au Cameroun</span>
                 <h1>Trouver un logement fiable au Cameroun devient plus simple.</h1>
                 <p>
                     Recherche par ville, quartier, budget et type de logement.
                     Compare les annonces, consulte les details utiles et contacte rapidement
                     un proprietaire ou un agent immobilier.
                 </p>
+
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <strong>Recherche ciblee</strong>
+                        <span>Ville, quartier, budget, type</span>
+                    </div>
+                    <div class="hero-stat">
+                        <strong>Contact direct</strong>
+                        <span>Messages, visites, signalements</span>
+                    </div>
+                </div>
 
                 <div class="hero-actions">
                     <a class="btn btn-primary" href="/housing-cm/properties/search.php">Rechercher un logement</a>
@@ -63,6 +75,7 @@ require_once __DIR__ . '/includes/functions.php';
     <section class="section">
         <div class="container">
             <h2 class="section-title">Pourquoi utiliser Housing CM ?</h2>
+            <p class="section-subtitle">Une approche plus claire, plus locale et plus pratique pour chercher ou proposer un logement.</p>
 
             <div class="cards-3">
                 <article class="feature-card">
@@ -78,6 +91,74 @@ require_once __DIR__ . '/includes/functions.php';
                 <article class="feature-card">
                     <h3>Contact direct</h3>
                     <p>Le site est pense pour faciliter les echanges entre client, proprietaire et agent immobilier.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-soft">
+        <div class="container">
+            <h2 class="section-title">Categories les plus recherchees</h2>
+            <div class="category-grid">
+                <article class="category-card">
+                    <strong>Chambres</strong>
+                    <span>Pour petits budgets et recherches rapides.</span>
+                </article>
+                <article class="category-card">
+                    <strong>Studios</strong>
+                    <span>Pratiques pour etudiants et jeunes actifs.</span>
+                </article>
+                <article class="category-card">
+                    <strong>Appartements</strong>
+                    <span>Pour familles, couples ou collocations.</span>
+                </article>
+                <article class="category-card">
+                    <strong>Maisons</strong>
+                    <span>Espaces plus grands pour location ou vente.</span>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container trust-strip">
+            <div class="trust-item">
+                <strong>Fiches detaillees</strong>
+                <span>Pour limiter les deplacements inutiles.</span>
+            </div>
+            <div class="trust-item">
+                <strong>Messagerie simple</strong>
+                <span>Pour discuter avant toute visite.</span>
+            </div>
+            <div class="trust-item">
+                <strong>Signalement</strong>
+                <span>Pour reduire les annonces douteuses.</span>
+            </div>
+            <div class="trust-item">
+                <strong>Demandes de visite</strong>
+                <span>Pour mieux organiser les rencontres.</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Comment ca marche ?</h2>
+            <div class="steps-grid">
+                <article class="step-card">
+                    <span class="step-number">1</span>
+                    <h3>Recherche</h3>
+                    <p>Le client filtre selon la ville, le quartier, le budget et le type de logement.</p>
+                </article>
+                <article class="step-card">
+                    <span class="step-number">2</span>
+                    <h3>Comparaison</h3>
+                    <p>Il consulte les details, les favoris et les informations utiles avant de se deplacer.</p>
+                </article>
+                <article class="step-card">
+                    <span class="step-number">3</span>
+                    <h3>Prise de contact</h3>
+                    <p>Il envoie un message, demande une visite et clarifie les modalites avec le responsable.</p>
                 </article>
             </div>
         </div>

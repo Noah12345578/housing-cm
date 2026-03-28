@@ -135,3 +135,149 @@ function verifyCsrfToken(?string $token): void
         redirect('/housing-cm/user/dashboard.php');
     }
 }
+
+function normalizeUploadedFiles(array $files): array
+{
+    if (!isset($files['name'])) {
+        return [];
+    }
+
+    if (!is_array($files['name'])) {
+        return [$files];
+    }
+
+    $normalized = [];
+    $total = count($files['name']);
+
+    for ($index = 0; $index < $total; $index++) {
+        $normalized[] = [
+            'name' => $files['name'][$index] ?? '',
+            'type' => $files['type'][$index] ?? '',
+            'tmp_name' => $files['tmp_name'][$index] ?? '',
+            'error' => $files['error'][$index] ?? UPLOAD_ERR_NO_FILE,
+            'size' => $files['size'][$index] ?? 0,
+        ];
+    }
+
+    return $normalized;
+}
+
+function storePropertyImages(array $files, int $maxFiles = 6): array
+{
+    $normalizedFiles = array_values(array_filter(
+        normalizeUploadedFiles($files),
+        static fn (array $file): bool => ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+    ));
+
+    if (!$normalizedFiles) {
+        return [];
+    }
+
+    if ($maxFiles <= 0 || count($normalizedFiles) > $maxFiles) {
+        throw new RuntimeException('Tu peux ajouter au maximum 6 images par annonce.');
+    }
+
+    $allowedMimeTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    $uploadDirectory = dirname(__DIR__) . '/uploads/properties/';
+
+    if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0777, true) && !is_dir($uploadDirectory)) {
+        throw new RuntimeException('Impossible de preparer le dossier des images.');
+    }
+
+    $storedPaths = [];
+
+    foreach ($normalizedFiles as $file) {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Une erreur est survenue pendant l envoi d une image.');
+        }
+
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            throw new RuntimeException('Chaque image doit faire moins de 2 Mo.');
+        }
+
+        $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($fileInfo, $file['tmp_name']);
+        finfo_close($fileInfo);
+
+        if (!isset($allowedMimeTypes[$mimeType])) {
+            throw new RuntimeException('Formats autorises : JPG, PNG et WEBP uniquement.');
+        }
+
+        $extension = $allowedMimeTypes[$mimeType];
+        $fileName = 'property_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $destination = $uploadDirectory . $fileName;
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            throw new RuntimeException('Impossible d enregistrer une image sur le serveur.');
+        }
+
+        $storedPaths[] = '/housing-cm/uploads/properties/' . $fileName;
+    }
+
+    return $storedPaths;
+}
+
+function deleteStoredFile(?string $relativePath): void
+{
+    if (!$relativePath) {
+        return;
+    }
+
+    $normalizedPath = str_replace('\\', '/', $relativePath);
+
+    if (str_starts_with($normalizedPath, '/housing-cm/')) {
+        $normalizedPath = substr($normalizedPath, strlen('/housing-cm/'));
+    } elseif (str_starts_with($normalizedPath, '/')) {
+        $normalizedPath = ltrim($normalizedPath, '/');
+    }
+
+    $absolutePath = dirname(__DIR__) . '/' . $normalizedPath;
+
+    if (is_file($absolutePath)) {
+        @unlink($absolutePath);
+    }
+}
+
+function comparePropertyIds(): array
+{
+    $ids = $_SESSION['compare_properties'] ?? [];
+
+    if (!is_array($ids)) {
+        return [];
+    }
+
+    return array_values(array_unique(array_map('intval', $ids)));
+}
+
+function isCompared(int $propertyId): bool
+{
+    return in_array($propertyId, comparePropertyIds(), true);
+}
+
+function renderErrorPage(string $title, string $message, int $statusCode = 404, array $actions = []): void
+{
+    http_response_code($statusCode);
+
+    $defaultActions = [
+        [
+            'label' => 'Retour a l accueil',
+            'url' => url('/index.php'),
+            'class' => 'btn btn-primary',
+        ],
+    ];
+
+    $errorPage = [
+        'title' => $title,
+        'message' => $message,
+        'status_code' => $statusCode,
+        'actions' => $actions ?: $defaultActions,
+    ];
+
+    include __DIR__ . '/error-page.php';
+    exit;
+}

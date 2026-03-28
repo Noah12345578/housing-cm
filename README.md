@@ -4,14 +4,14 @@ Plateforme web de recherche de logement au Cameroun, developpee avec `PHP`, `MyS
 
 ## Description
 
-Housing CM est un projet de site web immobilier concu pour aider :
+Housing CM aide :
 
 - les clients a rechercher un logement
 - les proprietaires a publier leurs biens
 - les agents immobiliers a proposer des annonces
 - les administrateurs a superviser la plateforme
 
-Le projet prend en compte plusieurs realites du marche immobilier au Cameroun :
+Le projet repond a plusieurs difficultes reelles du marche immobilier au Cameroun :
 
 - manque d informations claires
 - difficultes de contact
@@ -23,16 +23,20 @@ Le projet prend en compte plusieurs realites du marche immobilier au Cameroun :
 
 - inscription et connexion
 - gestion des roles : client, owner, agent, admin
-- publication d annonces immobilieres
-- recherche avec filtres
+- publication et modification d annonces
+- gestion du statut des annonces
+- recherche avec filtres, tri et pagination
 - fiche detaillee d un logement
-- upload d image principale
+- galerie multi-images
 - favoris
-- messagerie interne simple
+- comparaison de logements
+- messagerie par conversation
 - demande de visite
 - signalement d annonces suspectes
+- historique de recherche et suggestions simples
 - tableau de bord administrateur
-- liste des utilisateurs, annonces et signalements
+- moderation des utilisateurs et des annonces
+- statistiques simples pour l administration
 
 ## Technologies utilisees
 
@@ -47,20 +51,20 @@ Le projet prend en compte plusieurs realites du marche immobilier au Cameroun :
 
 ```text
 housing-cm/
-├── actions/
-├── admin/
-├── assets/
-├── auth/
-├── config/
-├── database/
-├── includes/
-├── messages/
-├── properties/
-├── uploads/
-├── user/
-├── .gitignore
-├── index.php
-└── README.md
+|-- actions/
+|-- admin/
+|-- assets/
+|-- auth/
+|-- config/
+|-- database/
+|-- includes/
+|-- messages/
+|-- properties/
+|-- uploads/
+|-- user/
+|-- .gitignore
+|-- index.php
+`-- README.md
 ```
 
 ## Installation en local
@@ -90,13 +94,7 @@ database/schema.sql
 
 ### 4. Configuration locale
 
-Creer ou adapter le fichier :
-
-```text
-config/database.php
-```
-
-Avec des valeurs locales de type :
+Le projet detecte automatiquement l environnement local et utilise :
 
 ```php
 $host = 'localhost';
@@ -105,16 +103,10 @@ $dbUser = 'root';
 $dbPass = '';
 ```
 
-Verifier aussi :
+Il ajuste aussi automatiquement la base d URL locale :
 
 ```php
 define('APP_BASE_PATH', '/housing-cm/');
-```
-
-dans :
-
-```text
-config/app.php
 ```
 
 ### 5. Lancement
@@ -129,27 +121,10 @@ http://localhost/housing-cm/
 
 Le projet a ete adapte pour un hebergement gratuit compatible `PHP/MySQL`, par exemple **InfinityFree**.
 
-### Configuration en ligne
+En ligne, le projet detecte aussi automatiquement son environnement et bascule sur :
 
-Dans :
-
-```text
-config/app.php
-```
-
-mettre :
-
-```php
-define('APP_BASE_PATH', '/');
-```
-
-Puis adapter :
-
-```text
-config/database.php
-```
-
-avec les identifiants MySQL de l hebergeur.
+- la bonne base d URL
+- les bons identifiants de base de donnees
 
 ## GitHub et securite
 
@@ -172,31 +147,41 @@ Le systeme gere les roles suivants :
 - `agent`
 - `admin`
 
-Pour tester l espace administrateur, il faut modifier le role d un compte dans la table `users`.
+Pour tester l espace administrateur, il faut attribuer le role `admin` a un compte dans la table `users`.
 
-## Etat du projet
+## Recette rapide
 
-Le projet couvre deja une base fonctionnelle importante :
+Une checklist de verification est disponible dans :
+
+```text
+QA-CHECKLIST.md
+```
+
+## Etat actuel du projet
+
+Le projet couvre deja une base fonctionnelle solide :
 
 - authentification
 - annonces
 - recherche
-- images
+- images multiples
 - favoris
-- messages
+- comparaison
+- messagerie
 - visites
 - signalements
-- administration de base
+- administration active
+- statistiques
+- historique de recherche
 
 ## Evolutions futures possibles
 
-- modification et suppression d annonces
-- gestion de plusieurs images par logement
+- notifications temps reel
+- geolocalisation sur carte
+- verification avancee des profils
 - commentaires et avis
-- geolocalisation
-- notifications
-- tableau de bord plus avance
-- verification des profils
+- interface mobile encore plus fine
+- paiement ou reservation plus tard si necessaire
 
 ## Auteur
 

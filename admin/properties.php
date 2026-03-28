@@ -25,12 +25,34 @@ $properties = $pdo->query(
 
 <main class="container">
     <section class="page-header">
+        <span class="eyebrow">Administration</span>
         <h1>Gestion des annonces</h1>
-        <p>Vue globale des logements publies sur la plateforme.</p>
+        <p>Surveille ici les logements publies, leurs responsables et leur statut sur la plateforme.</p>
+    </section>
+
+    <section class="dashboard-hero">
+        <div class="dashboard-hero-card admin-hero-card">
+            <div>
+                <span class="eyebrow">Supervision</span>
+                <h2>Controle rapide de la qualite des annonces</h2>
+                <p>Cette vue aide a reperer les annonces actives, les logements deja retires et les responsables qui publient sur la plateforme.</p>
+            </div>
+            <div class="admin-mini-stats">
+                <div class="detail-item"><strong>Total :</strong> <?php echo count($properties); ?> annonce(s)</div>
+                <div class="detail-item"><strong>Consultation :</strong> acces direct a chaque fiche detail</div>
+            </div>
+        </div>
     </section>
 
     <section class="section">
         <div class="table-card">
+            <div class="table-card-head">
+                <div>
+                    <span class="eyebrow">Catalogue global</span>
+                    <h2>Toutes les annonces</h2>
+                </div>
+                <a class="btn btn-secondary" href="<?php echo escape(url('/admin/dashboard.php')); ?>">Retour dashboard</a>
+            </div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -54,12 +76,26 @@ $properties = $pdo->query(
                             <td><?php echo escape($property['owner_name']); ?></td>
                             <td><?php echo escape($property['city_name']); ?></td>
                             <td><?php echo escape($property['neighborhood_name']); ?></td>
-                            <td><?php echo escape($property['property_type']); ?></td>
+                            <td><span class="badge"><?php echo escape($property['property_type']); ?></span></td>
                             <td><?php echo escape($property['listing_type']); ?></td>
                             <td><?php echo escape(formatPrice($property['price'])); ?></td>
-                            <td><?php echo escape($property['status']); ?></td>
+                            <td><span class="badge"><?php echo escape($property['status']); ?></span></td>
                             <td>
-                                <a class="btn btn-primary" href="/housing-cm/properties/details.php?id=<?php echo (int) $property['id']; ?>">Voir</a>
+                                <div class="admin-action-stack">
+                                    <a class="btn btn-primary" href="<?php echo escape(url('/properties/details.php?id=' . (int) $property['id'])); ?>">Voir</a>
+                                    <form class="admin-inline-form" action="<?php echo escape(url('/actions/admin_update_property_action.php')); ?>" method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+                                        <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
+                                        <select name="status" class="inline-select">
+                                            <option value="disponible" <?php echo $property['status'] === 'disponible' ? 'selected' : ''; ?>>Disponible</option>
+                                            <option value="reserve" <?php echo $property['status'] === 'reserve' ? 'selected' : ''; ?>>Reserve</option>
+                                            <option value="loue" <?php echo $property['status'] === 'loue' ? 'selected' : ''; ?>>Loue</option>
+                                            <option value="vendu" <?php echo $property['status'] === 'vendu' ? 'selected' : ''; ?>>Vendu</option>
+                                            <option value="retire" <?php echo $property['status'] === 'retire' ? 'selected' : ''; ?>>Retire</option>
+                                        </select>
+                                        <button class="btn btn-secondary" type="submit">Mettre a jour</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

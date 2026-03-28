@@ -50,8 +50,22 @@ $sentVisits = $sentStatement->fetchAll();
 
 <main class="container">
     <section class="page-header">
+        <span class="eyebrow">Organisation des visites</span>
         <h1>Demandes de visite</h1>
         <p>Consulte les visites que tu as demandees et celles que tu as recues.</p>
+    </section>
+
+    <section class="dashboard-hero">
+        <div class="dashboard-hero-card">
+            <div>
+                <span class="eyebrow">Planification</span>
+                <h2>Suivi clair des rendez-vous immobiliers</h2>
+                <p>Retrouve les propositions de visites, les dates souhaitees et les reponses des responsables de logement.</p>
+            </div>
+            <div class="card-actions">
+                <a class="btn btn-primary" href="/housing-cm/properties/search.php">Chercher un logement</a>
+            </div>
+        </div>
     </section>
 
     <section class="section">
@@ -73,8 +87,11 @@ $sentVisits = $sentStatement->fetchAll();
                             <span class="badge"><?php echo escape($visit['status']); ?></span>
                         </div>
 
-                        <p><strong>Date souhaitee :</strong> <?php echo escape($visit['preferred_date']); ?></p>
-                        <p><strong>Telephone :</strong> <?php echo escape($visit['requester_phone']); ?></p>
+                        <div class="message-meta-row">
+                            <span>Date souhaitee : <?php echo escape($visit['preferred_date']); ?></span>
+                            <span>Telephone : <?php echo escape($visit['requester_phone']); ?></span>
+                        </div>
+
                         <p class="message-text"><?php echo nl2br(escape($visit['message'] ?? 'Aucun message.')); ?></p>
 
                         <?php if ($visit['status'] === 'en_attente'): ?>
@@ -119,7 +136,11 @@ $sentVisits = $sentStatement->fetchAll();
                             <span class="badge"><?php echo escape($visit['status']); ?></span>
                         </div>
 
-                        <p><strong>Date souhaitee :</strong> <?php echo escape($visit['preferred_date']); ?></p>
+                        <div class="message-meta-row">
+                            <span>Date souhaitee : <?php echo escape($visit['preferred_date']); ?></span>
+                            <span>Responsable : <?php echo escape($visit['owner_name']); ?></span>
+                        </div>
+
                         <p class="message-text"><?php echo nl2br(escape($visit['message'] ?? 'Aucun message.')); ?></p>
                     </article>
                 <?php endforeach; ?>

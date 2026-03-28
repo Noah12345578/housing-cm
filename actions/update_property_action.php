@@ -1,16 +1,40 @@
 <?php
-session_start();
-
+require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
-
-requireRole(['owner', 'agent']);
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('/housing-cm/properties/create.php');
-}
 
 verifyCsrfToken($_POST['csrf_token'] ?? null);
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    redirect('/housing-cm/properties/my-properties.php');
+}
+
+$propertyId = isset($_POST['property_id']) ? (int) $_POST['property_id'] : 0;
+$user = currentUser();
+
+if ($propertyId <= 0) {
+    setFlashMessage('Annonce introuvable.', 'error');
+    redirect('/housing-cm/properties/my-properties.php');
+}
+
+$existingPropertyStatement = $pdo->prepare(
+    'SELECT properties.id, properties.location_id
+     FROM properties
+     WHERE properties.id = :id AND properties.user_id = :user_id
+     LIMIT 1'
+);
+
+$existingPropertyStatement->execute([
+    'id' => $propertyId,
+    'user_id' => $user['id'],
+]);
+
+$existingProperty = $existingPropertyStatement->fetch();
+
+if (!$existingProperty) {
+    setFlashMessage('Vous ne pouvez pas modifier cette annonce.', 'error');
+    redirect('/housing-cm/properties/my-properties.php');
+}
 
 $allowedPropertyTypes = ['chambre', 'studio', 'appartement', 'maison', 'mini_cite', 'terrain', 'autre'];
 $allowedListingTypes = ['location', 'vente'];
@@ -54,8 +78,6 @@ $data = [
 
 $_SESSION['old_property_input'] = $data;
 
-$imageRelativePaths = [];
-
 if (
     $data['title'] === '' ||
     $data['description'] === '' ||
@@ -66,84 +88,70 @@ if (
     $data['city_name'] === '' ||
     $data['neighborhood_name'] === ''
 ) {
-    setFlashMessage('Veuillez remplir tous les champs obligatoires de l annonce.', 'error');
-    redirect('/housing-cm/properties/create.php');
+    setFlashMessage('Veuillez remplir tous les champs obligatoires.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
 
-if (strlen($data['title']) < 5) {
-    setFlashMessage('Le titre de l annonce doit contenir au moins 5 caracteres.', 'error');
-    redirect('/housing-cm/properties/create.php');
+if (strlen($data['title']) < 5 || strlen($data['description']) < 20) {
+    setFlashMessage('Le titre ou la description est trop court.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
 
-if (strlen($data['description']) < 20) {
-    setFlashMessage('La description doit contenir au moins 20 caracteres.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['property_type'], $allowedPropertyTypes, true)) {
-    setFlashMessage('Le type de logement est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['listing_type'], $allowedListingTypes, true)) {
-    setFlashMessage('Le statut de l annonce est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['property_style'], $allowedStyles, true)) {
-    setFlashMessage('Le style du logement est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['kitchen_type'], $allowedKitchenTypes, true)) {
-    setFlashMessage('Le type de cuisine est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['security_level'], $allowedSecurityLevels, true)) {
-    setFlashMessage('Le niveau de securite est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
-}
-
-if (!in_array($data['road_access'], $allowedRoadAccess, true)) {
-    setFlashMessage('Le niveau d acces a la route est invalide.', 'error');
-    redirect('/housing-cm/properties/create.php');
+if (!in_array($data['property_type'], $allowedPropertyTypes, true) ||
+    !in_array($data['listing_type'], $allowedListingTypes, true) ||
+    !in_array($data['property_style'], $allowedStyles, true) ||
+    !in_array($data['kitchen_type'], $allowedKitchenTypes, true) ||
+    !in_array($data['security_level'], $allowedSecurityLevels, true) ||
+    !in_array($data['road_access'], $allowedRoadAccess, true)
+) {
+    setFlashMessage('Certaines valeurs du formulaire sont invalides.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
 
 if (!is_numeric($data['price']) || (float) $data['price'] < 0) {
-    setFlashMessage('Le prix doit etre un nombre valide.', 'error');
-    redirect('/housing-cm/properties/create.php');
+    setFlashMessage('Le prix doit etre valide.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
 
-$numericFields = ['rooms', 'bedrooms', 'living_rooms', 'bathrooms', 'kitchens'];
-
-foreach ($numericFields as $field) {
+foreach (['rooms', 'bedrooms', 'living_rooms', 'bathrooms', 'kitchens'] as $field) {
     if (!is_numeric($data[$field]) || (int) $data[$field] < 0) {
-        setFlashMessage('Les nombres de pieces, chambres, salons, douches et cuisines doivent etre valides.', 'error');
-        redirect('/housing-cm/properties/create.php');
+        setFlashMessage('Les nombres de pieces et dependances doivent etre valides.', 'error');
+        redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
     }
 }
 
 if ($data['surface_area'] !== '' && (!is_numeric($data['surface_area']) || (float) $data['surface_area'] < 0)) {
-    setFlashMessage('La superficie doit etre un nombre valide.', 'error');
-    redirect('/housing-cm/properties/create.php');
+    setFlashMessage('La superficie doit etre valide.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
+
+$existingImageCountStatement = $pdo->prepare(
+    'SELECT COUNT(*) FROM property_images WHERE property_id = :property_id'
+);
+
+$existingImageCountStatement->execute(['property_id' => $propertyId]);
+$existingImageCount = (int) $existingImageCountStatement->fetchColumn();
+
+$newImagePaths = [];
 
 try {
-    $imageRelativePaths = storePropertyImages($_FILES['property_images'] ?? [], 6);
+    $newImagePaths = storePropertyImages($_FILES['property_images'] ?? [], max(0, 6 - $existingImageCount));
 } catch (RuntimeException $exception) {
     setFlashMessage($exception->getMessage(), 'error');
-    redirect('/housing-cm/properties/create.php');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
-
-$user = currentUser();
 
 $pdo->beginTransaction();
 
 try {
     $locationStatement = $pdo->prepare(
-        'INSERT INTO locations (region_name, city_name, district_name, neighborhood_name, specific_area)
-         VALUES (:region_name, :city_name, :district_name, :neighborhood_name, :specific_area)'
+        'UPDATE locations
+         SET region_name = :region_name,
+             city_name = :city_name,
+             district_name = :district_name,
+             neighborhood_name = :neighborhood_name,
+             specific_area = :specific_area
+         WHERE id = :location_id'
     );
 
     $locationStatement->execute([
@@ -152,27 +160,40 @@ try {
         'district_name' => $data['district_name'] !== '' ? $data['district_name'] : null,
         'neighborhood_name' => $data['neighborhood_name'],
         'specific_area' => $data['specific_area'] !== '' ? $data['specific_area'] : null,
+        'location_id' => $existingProperty['location_id'],
     ]);
 
-    $locationId = (int) $pdo->lastInsertId();
-
     $propertyStatement = $pdo->prepare(
-        'INSERT INTO properties (
-            user_id, location_id, title, description, property_type, listing_type, property_style, price,
-            rooms, bedrooms, living_rooms, bathrooms, kitchens, kitchen_type, surface_area, is_furnished,
-            has_water, has_electricity, has_parking, has_fence, security_level, road_access, near_school,
-            near_market, near_hospital, near_university, near_transport
-        ) VALUES (
-            :user_id, :location_id, :title, :description, :property_type, :listing_type, :property_style, :price,
-            :rooms, :bedrooms, :living_rooms, :bathrooms, :kitchens, :kitchen_type, :surface_area, :is_furnished,
-            :has_water, :has_electricity, :has_parking, :has_fence, :security_level, :road_access, :near_school,
-            :near_market, :near_hospital, :near_university, :near_transport
-        )'
+        'UPDATE properties
+         SET title = :title,
+             description = :description,
+             property_type = :property_type,
+             listing_type = :listing_type,
+             property_style = :property_style,
+             price = :price,
+             rooms = :rooms,
+             bedrooms = :bedrooms,
+             living_rooms = :living_rooms,
+             bathrooms = :bathrooms,
+             kitchens = :kitchens,
+             kitchen_type = :kitchen_type,
+             surface_area = :surface_area,
+             is_furnished = :is_furnished,
+             has_water = :has_water,
+             has_electricity = :has_electricity,
+             has_parking = :has_parking,
+             has_fence = :has_fence,
+             security_level = :security_level,
+             road_access = :road_access,
+             near_school = :near_school,
+             near_market = :near_market,
+             near_hospital = :near_hospital,
+             near_university = :near_university,
+             near_transport = :near_transport
+         WHERE id = :property_id AND user_id = :user_id'
     );
 
     $propertyStatement->execute([
-        'user_id' => $user['id'],
-        'location_id' => $locationId,
         'title' => $data['title'],
         'description' => $data['description'],
         'property_type' => $data['property_type'],
@@ -198,20 +219,20 @@ try {
         'near_hospital' => $data['near_hospital'],
         'near_university' => $data['near_university'],
         'near_transport' => $data['near_transport'],
+        'property_id' => $propertyId,
+        'user_id' => $user['id'],
     ]);
 
-    $propertyId = (int) $pdo->lastInsertId();
-
-    if ($imageRelativePaths) {
+    if ($newImagePaths) {
         $imageStatement = $pdo->prepare(
             'INSERT INTO property_images (property_id, image_path, is_main) VALUES (:property_id, :image_path, :is_main)'
         );
 
-        foreach ($imageRelativePaths as $index => $imageRelativePath) {
+        foreach ($newImagePaths as $index => $imagePath) {
             $imageStatement->execute([
                 'property_id' => $propertyId,
-                'image_path' => $imageRelativePath,
-                'is_main' => $index === 0 ? 1 : 0,
+                'image_path' => $imagePath,
+                'is_main' => ($existingImageCount === 0 && $index === 0) ? 1 : 0,
             ]);
         }
     }
@@ -219,16 +240,14 @@ try {
     $pdo->commit();
 } catch (Throwable $exception) {
     $pdo->rollBack();
-    if (!empty($imageRelativePaths)) {
-        foreach ($imageRelativePaths as $imageRelativePath) {
-            deleteStoredFile($imageRelativePath);
-        }
+    foreach ($newImagePaths as $imagePath) {
+        deleteStoredFile($imagePath);
     }
-    setFlashMessage('Une erreur est survenue pendant l enregistrement de l annonce.', 'error');
-    redirect('/housing-cm/properties/create.php');
+    setFlashMessage('Une erreur est survenue pendant la modification.', 'error');
+    redirect('/housing-cm/properties/edit.php?id=' . $propertyId);
 }
 
 unset($_SESSION['old_property_input']);
 
-setFlashMessage('Annonce enregistree avec succes.');
+setFlashMessage('Annonce mise a jour avec succes.');
 redirect('/housing-cm/properties/my-properties.php');

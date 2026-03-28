@@ -13,29 +13,32 @@ verifyCsrfToken($_POST['csrf_token'] ?? null);
 $propertyId = isset($_POST['property_id']) ? (int) $_POST['property_id'] : 0;
 $receiverId = isset($_POST['receiver_id']) ? (int) $_POST['receiver_id'] : 0;
 $messageText = normalizeText($_POST['message'] ?? '');
+$redirectTo = trim($_POST['redirect_to'] ?? '/housing-cm/messages/inbox.php');
 
-if ($propertyId <= 0 || $receiverId <= 0 || $messageText === '') {
+if ($receiverId <= 0 || $messageText === '') {
     setFlashMessage('Veuillez remplir correctement le formulaire de message.', 'error');
     redirect('/housing-cm/properties/search.php');
 }
 
 if (strlen($messageText) < 5) {
     setFlashMessage('Le message est trop court.', 'error');
-    redirect('/housing-cm/properties/details.php?id=' . $propertyId);
+    redirect($redirectTo);
 }
 
 if ($receiverId === (int) $user['id']) {
     setFlashMessage('Tu ne peux pas t envoyer un message a toi-meme.', 'error');
-    redirect('/housing-cm/properties/details.php?id=' . $propertyId);
+    redirect($redirectTo);
 }
 
-$propertyStatement = $pdo->prepare('SELECT id, user_id FROM properties WHERE id = :id LIMIT 1');
-$propertyStatement->execute(['id' => $propertyId]);
-$property = $propertyStatement->fetch();
+if ($propertyId > 0) {
+    $propertyStatement = $pdo->prepare('SELECT id, user_id FROM properties WHERE id = :id LIMIT 1');
+    $propertyStatement->execute(['id' => $propertyId]);
+    $property = $propertyStatement->fetch();
 
-if (!$property) {
-    setFlashMessage('Annonce introuvable.', 'error');
-    redirect('/housing-cm/properties/search.php');
+    if (!$property) {
+        setFlashMessage('Annonce introuvable.', 'error');
+        redirect('/housing-cm/properties/search.php');
+    }
 }
 
 $insertStatement = $pdo->prepare(
@@ -45,9 +48,9 @@ $insertStatement = $pdo->prepare(
 $insertStatement->execute([
     'sender_id' => $user['id'],
     'receiver_id' => $receiverId,
-    'property_id' => $propertyId,
+    'property_id' => $propertyId > 0 ? $propertyId : null,
     'message' => $messageText,
 ]);
 
 setFlashMessage('Message envoye avec succes.');
-redirect('/housing-cm/messages/inbox.php');
+redirect($redirectTo);

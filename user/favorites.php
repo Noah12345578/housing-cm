@@ -37,6 +37,21 @@ $favorites = $statement->fetchAll();
         <p>Retrouve ici les logements que tu veux comparer ou revoir plus tard.</p>
     </section>
 
+    <?php if ($favorites): ?>
+        <section class="dashboard-hero">
+            <div class="dashboard-hero-card">
+                <div>
+                    <span class="eyebrow">Comparaison rapide</span>
+                    <h2>Selectionne les biens a opposer cote a cote</h2>
+                    <p>Ajoute des favoris a la comparaison pour voir plus clairement les differences de prix, d equipements et de localisation.</p>
+                </div>
+                <div class="card-actions">
+                    <a class="btn btn-primary" href="<?php echo escape(url('/properties/compare.php')); ?>">Ouvrir la comparaison</a>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <section class="section">
         <?php if (!$favorites): ?>
             <div class="feature-card">
@@ -69,9 +84,18 @@ $favorites = $statement->fetchAll();
                             <p class="property-price"><?php echo escape(formatPrice($property['price'])); ?></p>
 
                             <div class="card-actions">
-                                <a class="btn btn-primary" href="/housing-cm/properties/details.php?id=<?php echo (int) $property['id']; ?>">Voir details</a>
+                                <a class="btn btn-primary" href="<?php echo escape(url('/properties/details.php?id=' . (int) $property['id'])); ?>">Voir details</a>
 
-                                <form action="/housing-cm/actions/favorite_action.php" method="POST">
+                                <form action="<?php echo escape(url('/actions/toggle_compare_action.php')); ?>" method="POST">
+                                    <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+                                    <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
+                                    <input type="hidden" name="redirect_to" value="/housing-cm/user/favorites.php">
+                                    <button class="btn btn-secondary" type="submit">
+                                        <?php echo isCompared((int) $property['id']) ? 'Retirer comparaison' : 'Comparer'; ?>
+                                    </button>
+                                </form>
+
+                                <form action="<?php echo escape(url('/actions/favorite_action.php')); ?>" method="POST">
                                     <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
                                     <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
                                     <input type="hidden" name="redirect_to" value="/housing-cm/user/favorites.php">

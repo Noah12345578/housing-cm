@@ -5,14 +5,20 @@ require_once __DIR__ . '/../includes/functions.php';
 $propertyId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($propertyId <= 0) {
-    setFlashMessage('Annonce introuvable.', 'error');
-    redirect('/housing-cm/properties/search.php');
+    renderErrorPage(
+        'Annonce introuvable',
+        'Le logement demande n existe pas ou son identifiant est invalide.',
+        404,
+        [
+            ['label' => 'Retour a la recherche', 'url' => url('/properties/search.php'), 'class' => 'btn btn-primary'],
+            ['label' => 'Accueil', 'url' => url('/index.php'), 'class' => 'btn btn-secondary'],
+        ]
+    );
 }
 
 $statement = $pdo->prepare(
     'SELECT
         properties.*,
-        property_images.image_path,
         locations.region_name,
         locations.city_name,
         locations.district_name,
@@ -25,7 +31,6 @@ $statement = $pdo->prepare(
      FROM properties
      INNER JOIN locations ON properties.location_id = locations.id
      INNER JOIN users ON properties.user_id = users.id
-     LEFT JOIN property_images ON properties.id = property_images.property_id AND property_images.is_main = 1
      WHERE properties.id = :id
      LIMIT 1'
 );
@@ -34,9 +39,71 @@ $statement->execute(['id' => $propertyId]);
 $property = $statement->fetch();
 
 if (!$property) {
-    setFlashMessage('Annonce introuvable.', 'error');
-    redirect('/housing-cm/properties/search.php');
+    renderErrorPage(
+        'Annonce indisponible',
+        'Cette annonce n existe plus ou n est plus accessible pour le moment.',
+        404,
+        [
+            ['label' => 'Voir d autres logements', 'url' => url('/properties/search.php'), 'class' => 'btn btn-primary'],
+            ['label' => 'Retour a l accueil', 'url' => url('/index.php'), 'class' => 'btn btn-secondary'],
+        ]
+    );
 }
+
+$imagesStatement = $pdo->prepare(
+    'SELECT id, image_path, is_main
+     FROM property_images
+     WHERE property_id = :property_id
+     ORDER BY is_main DESC, id ASC'
+);
+
+$imagesStatement->execute(['property_id' => $propertyId]);
+$propertyImages = $imagesStatement->fetchAll();
+$mainImagePath = $propertyImages[0]['image_path'] ?? '/housing-cm/assets/images/default-property.svg';
+
+$similarStatement = $pdo->prepare(
+    'SELECT
+        properties.id,
+        properties.title,
+        properties.price,
+        properties.property_type,
+        properties.listing_type,
+        properties.bedrooms,
+        properties.bathrooms,
+        property_images.image_path,
+        locations.city_name,
+        locations.neighborhood_name
+     FROM properties
+     INNER JOIN locations ON properties.location_id = locations.id
+     LEFT JOIN property_images ON properties.id = property_images.property_id AND property_images.is_main = 1
+     WHERE properties.id <> :property_id
+       AND properties.status = :status
+       AND properties.listing_type = :listing_type
+       AND (
+            properties.property_type = :property_type
+         OR locations.city_name = :city_name
+       )
+     GROUP BY properties.id
+     ORDER BY
+        CASE WHEN properties.property_type = :property_type_priority THEN 0 ELSE 1 END,
+        CASE WHEN locations.city_name = :city_name_priority THEN 0 ELSE 1 END,
+        ABS(properties.price - :price_reference) ASC,
+        properties.created_at DESC
+     LIMIT 3'
+);
+
+$similarStatement->execute([
+    'property_id' => $propertyId,
+    'status' => 'disponible',
+    'listing_type' => $property['listing_type'],
+    'property_type' => $property['property_type'],
+    'city_name' => $property['city_name'],
+    'property_type_priority' => $property['property_type'],
+    'city_name_priority' => $property['city_name'],
+    'price_reference' => (float) $property['price'],
+]);
+
+$similarProperties = $similarStatement->fetchAll();
 ?>
 <?php include __DIR__ . '/../includes/header.php'; ?>
 <?php include __DIR__ . '/../includes/navbar.php'; ?>
@@ -55,6 +122,7 @@ if (isLoggedIn()) {
 
 <main class="container">
     <section class="page-header">
+        <span class="eyebrow">Fiche logement</span>
         <h1><?php echo escape($property['title']); ?></h1>
         <p>
             <?php echo escape($property['neighborhood_name']); ?>,
@@ -67,9 +135,21 @@ if (isLoggedIn()) {
         <article class="detail-card">
             <img
                 class="detail-image"
-                src="<?php echo escape($property['image_path'] ?: '/housing-cm/assets/images/default-property.svg'); ?>"
+                src="<?php echo escape(url($mainImagePath)); ?>"
                 alt="Image du logement <?php echo escape($property['title']); ?>"
             >
+
+            <?php if ($propertyImages): ?>
+                <div class="detail-thumb-grid">
+                    <?php foreach ($propertyImages as $image): ?>
+                        <img
+                            class="detail-thumb <?php echo (int) $image['is_main'] === 1 ? 'detail-thumb-main' : ''; ?>"
+                            src="<?php echo escape(url($image['image_path'])); ?>"
+                            alt="Photo supplementaire du logement <?php echo escape($property['title']); ?>"
+                        >
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
 
             <div class="detail-highlight">
                 <span class="badge"><?php echo escape($property['listing_type']); ?></span>
@@ -78,11 +158,17 @@ if (isLoggedIn()) {
             </div>
 
             <p class="property-price"><?php echo escape(formatPrice($property['price'])); ?></p>
+            <div class="detail-metrics">
+                <div class="detail-metric"><strong><?php echo (int) $property['bedrooms']; ?></strong><span>Chambres</span></div>
+                <div class="detail-metric"><strong><?php echo (int) $property['bathrooms']; ?></strong><span>Douches</span></div>
+                <div class="detail-metric"><strong><?php echo (int) $property['living_rooms']; ?></strong><span>Salons</span></div>
+                <div class="detail-metric"><strong><?php echo (int) $property['rooms']; ?></strong><span>Pieces</span></div>
+            </div>
 
-            <h2>Description</h2>
+            <h2 class="detail-section-title">Description</h2>
             <p><?php echo nl2br(escape($property['description'])); ?></p>
 
-            <h2>Caracteristiques</h2>
+            <h2 class="detail-section-title">Caracteristiques</h2>
             <div class="details-grid">
                 <div class="detail-item"><strong>Style :</strong> <?php echo escape($property['property_style']); ?></div>
                 <div class="detail-item"><strong>Pieces :</strong> <?php echo (int) $property['rooms']; ?></div>
@@ -98,7 +184,7 @@ if (isLoggedIn()) {
                 <div class="detail-item"><strong>Zone precise :</strong> <?php echo escape($property['specific_area'] ?? 'Non precisee'); ?></div>
             </div>
 
-            <h2>Equipements et proximite</h2>
+            <h2 class="detail-section-title">Equipements et proximite</h2>
             <div class="details-grid">
                 <div class="detail-item"><strong>Eau :</strong> <?php echo $property['has_water'] ? 'Oui' : 'Non'; ?></div>
                 <div class="detail-item"><strong>Electricite :</strong> <?php echo $property['has_electricity'] ? 'Oui' : 'Non'; ?></div>
@@ -112,7 +198,8 @@ if (isLoggedIn()) {
             </div>
         </article>
 
-        <aside class="detail-card">
+        <aside class="detail-card detail-sidebar">
+            <span class="eyebrow">Contact et actions</span>
             <h2>Responsable du bien</h2>
             <p><strong>Nom :</strong> <?php echo escape($property['full_name']); ?></p>
             <p><strong>Role :</strong> <?php echo escape($property['role']); ?></p>
@@ -120,6 +207,16 @@ if (isLoggedIn()) {
             <p><strong>Email :</strong> <?php echo escape($property['email']); ?></p>
 
             <?php if (isLoggedIn() && (int) currentUser()['id'] !== (int) $property['user_id']): ?>
+                <hr class="separator">
+                <form action="<?php echo escape(url('/actions/toggle_compare_action.php')); ?>" method="POST" class="favorite-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+                    <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
+                    <input type="hidden" name="redirect_to" value="/housing-cm/properties/details.php?id=<?php echo (int) $property['id']; ?>">
+                    <button class="btn btn-secondary" type="submit">
+                        <?php echo isCompared((int) $property['id']) ? 'Retirer de la comparaison' : 'Ajouter a la comparaison'; ?>
+                    </button>
+                </form>
+
                 <hr class="separator">
                 <form action="/housing-cm/actions/favorite_action.php" method="POST" class="favorite-form">
                     <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
@@ -136,6 +233,7 @@ if (isLoggedIn()) {
                     <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
                     <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
                     <input type="hidden" name="receiver_id" value="<?php echo (int) $property['user_id']; ?>">
+                    <input type="hidden" name="redirect_to" value="/housing-cm/messages/conversation.php?contact_id=<?php echo (int) $property['user_id']; ?>&property_id=<?php echo (int) $property['id']; ?>">
 
                     <div>
                         <label for="message">Votre message</label>
@@ -193,6 +291,16 @@ if (isLoggedIn()) {
                 </form>
             <?php elseif (!isLoggedIn()): ?>
                 <hr class="separator">
+                <form action="<?php echo escape(url('/actions/toggle_compare_action.php')); ?>" method="POST" class="favorite-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo escape(csrfToken()); ?>">
+                    <input type="hidden" name="property_id" value="<?php echo (int) $property['id']; ?>">
+                    <input type="hidden" name="redirect_to" value="/housing-cm/properties/details.php?id=<?php echo (int) $property['id']; ?>">
+                    <button class="btn btn-secondary" type="submit">
+                        <?php echo isCompared((int) $property['id']) ? 'Retirer de la comparaison' : 'Ajouter a la comparaison'; ?>
+                    </button>
+                </form>
+
+                <hr class="separator">
                 <p class="helper-text">Connecte-toi pour envoyer un message, demander une visite ou signaler une annonce.</p>
                 <a class="btn btn-primary" href="/housing-cm/auth/login.php">Se connecter</a>
             <?php endif; ?>
@@ -200,6 +308,51 @@ if (isLoggedIn()) {
             <a class="btn btn-primary" href="/housing-cm/properties/search.php">Retour a la recherche</a>
         </aside>
     </section>
+
+    <?php if ($similarProperties): ?>
+        <section class="section">
+            <div class="results-head">
+                <div>
+                    <span class="eyebrow">Comparaison rapide</span>
+                    <h2 class="section-title">Annonces similaires</h2>
+                    <p class="helper-text">Des biens proches en type, en ville ou en gamme de prix pour t aider a comparer.</p>
+                </div>
+            </div>
+
+            <div class="cards-3">
+                <?php foreach ($similarProperties as $similarProperty): ?>
+                    <article class="property-card property-card-rich">
+                        <img
+                            class="property-card-image"
+                            src="<?php echo escape(url($similarProperty['image_path'] ?: '/assets/images/default-property.svg')); ?>"
+                            alt="Image du logement <?php echo escape($similarProperty['title']); ?>"
+                        >
+                        <div class="property-card-body">
+                            <div class="property-card-top">
+                                <span class="badge"><?php echo escape($similarProperty['listing_type']); ?></span>
+                                <span class="badge"><?php echo escape($similarProperty['property_type']); ?></span>
+                            </div>
+
+                            <h3><?php echo escape($similarProperty['title']); ?></h3>
+                            <p class="property-location">
+                                <?php echo escape($similarProperty['neighborhood_name']); ?>,
+                                <?php echo escape($similarProperty['city_name']); ?>
+                            </p>
+
+                            <p class="property-price"><?php echo escape(formatPrice($similarProperty['price'])); ?></p>
+
+                            <div class="metric-row">
+                                <span><?php echo (int) $similarProperty['bedrooms']; ?> chambre(s)</span>
+                                <span><?php echo (int) $similarProperty['bathrooms']; ?> douche(s)</span>
+                            </div>
+
+                            <a class="btn btn-primary" href="<?php echo escape(url('/properties/details.php?id=' . (int) $similarProperty['id'])); ?>">Voir details</a>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
 </main>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
